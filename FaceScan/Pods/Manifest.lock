@@ -1,12 +1,18 @@
 PODS:
   - GPUImage (0.1.7)
+  - Vivid (0.9)
+  - YUCIHighPassSkinSmoothing (1.4):
+    - Vivid
 
 DEPENDENCIES:
   - GPUImage
+  - YUCIHighPassSkinSmoothing
 
 SPEC CHECKSUMS:
   GPUImage: 733a5f0fab92df9de1c37ba9df520a833ccb406d
+  Vivid: 0fde7409beac71224deb151dd78f98a5bb860497
+  YUCIHighPassSkinSmoothing: 8418fd1bf605ec22b647c57745b863b352f72097
 
-PODFILE CHECKSUM: b24c6a5c8194288ca0b0485ea71b93f481c370e3
+PODFILE CHECKSUM: 34dca97a7c78c6ea5f6bef0664a122515fde4726
 
 COCOAPODS: 1.4.0

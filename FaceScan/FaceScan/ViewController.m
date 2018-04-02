@@ -8,6 +8,7 @@
 
 #import "ViewController.h"
 #import "GPUImageBeautifyFilter.h"
+#import "YUCIHighPassSkinSmoothing.h"
 
 @interface ViewController () <ARSCNViewDelegate, ARSessionDelegate>
 
@@ -18,6 +19,10 @@
 @property (nonatomic, strong) GPUImageView *captureView;
 @property (nonatomic, strong) GPUImageVideoCamera *camera;
 @property (nonatomic, strong) GPUImageBeautifyFilter *beautifyFilter;
+
+@property (nonatomic, strong) YUCIHighPassSkinSmoothing *skinSmoothFilter;
+@property (nonatomic, strong) CIContext *ciContext;
+@property (nonatomic, assign) CGRect cropRect;
 
 @property (nonatomic, strong) dispatch_queue_t faceTrackingQueue;
 
@@ -30,12 +35,12 @@
     // Do any additional setup after loading the view, typically from a nib.
     
     [self setupViews];
-	[self setupLive];
+//    [self setupLive];
     [self setupSession];
 }
 
 - (void)setupViews {
-	[self.view addSubview:self.captureView];
+//    [self.view addSubview:self.captureView];
 	[self.view addSubview:self.sceneView];
 }
 
@@ -48,7 +53,6 @@
 - (void)setupSession {
     
     ARFaceTrackingConfiguration *configuration = [[ARFaceTrackingConfiguration alloc] init];
-    configuration.lightEstimationEnabled = YES;
     
     [self.sceneView.session runWithConfiguration:configuration
                                          options:ARSessionRunOptionResetTracking | ARSessionRunOptionRemoveExistingAnchors];
@@ -81,9 +85,19 @@
 #pragma mark - ARSessionDelegate
 
 - (void)session:(ARSession *)session didUpdateFrame:(ARFrame *)frame {
-	
-	
-	
+    
+    CVPixelBufferRef pixelBufferRef = frame.capturedImage;
+    CIImage *ciImage = [[[CIImage imageWithCVPixelBuffer:pixelBufferRef] imageByApplyingOrientation:6] imageByCroppingToRect:self.cropRect];
+
+    self.skinSmoothFilter.inputImage = ciImage;
+    
+    CIImage *outputImage = self.skinSmoothFilter.outputImage;
+    
+    CGImageRef cgImage = [self.ciContext createCGImage:outputImage fromRect:outputImage.extent];
+    
+    self.sceneView.scene.background.contents = (__bridge id)cgImage;
+    
+    CGImageRelease(cgImage);
 }
 
 #pragma mark - Lazy Loading
@@ -107,8 +121,8 @@
 - (SCNNode *)faceNode {
     if (! _faceNode) {
         ARSCNFaceGeometry *faceGeometry = [ARSCNFaceGeometry faceGeometryWithDevice:self.sceneView.device];
-		faceGeometry.firstMaterial.diffuse.contents = UIColor.whiteColor;
-        faceGeometry.firstMaterial.lightingModelName = SCNLightingModelPhong;
+        faceGeometry.firstMaterial.diffuse.contents = UIColor.clearColor;//[UIColor colorWithWhite:1 alpha:0.4];
+        faceGeometry.firstMaterial.lightingModelName = SCNLightingModelPhysicallyBased;
         
         _faceNode = [[SCNNode alloc] init];
         _faceNode.geometry = faceGeometry;
@@ -144,6 +158,28 @@
 		_beautifyFilter = [[GPUImageBeautifyFilter alloc] init];
 	}
 	return _beautifyFilter;
+}
+
+- (CIContext *)ciContext {
+    if (! _ciContext) {
+        _ciContext = [CIContext context];
+    }
+    return _ciContext;
+}
+
+- (YUCIHighPassSkinSmoothing *)skinSmoothFilter {
+    if (! _skinSmoothFilter) {
+        _skinSmoothFilter = [[YUCIHighPassSkinSmoothing alloc] init];
+        _skinSmoothFilter.inputSharpnessFactor = @2;
+    }
+    return _skinSmoothFilter;
+}
+
+- (CGRect)cropRect {
+    if (CGRectIsEmpty(_cropRect)) {
+        _cropRect = CGRectIntegral( AVMakeRectWithAspectRatioInsideRect(self.sceneView.bounds.size, CGRectMake(0, 0, 720, 1280)));
+    }
+    return _cropRect;
 }
 
 @end
